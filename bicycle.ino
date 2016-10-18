@@ -10,11 +10,19 @@ ESP8266WebServer server(80);
 
 const int led = 13;
 int count = 0;
+float velocity = 0;
+bool play = false;
+String cashback = "";
+
 
 void handleRoot() {
-  digitalWrite(led, 1);
-  server.send(200, "text/plain", "hello from esp8266! " + String(count));
-  digitalWrite(led, 0);
+  String t;
+  if(play)
+    t = "play," + String(count) + "," + String(velocity) + "," + cashback;
+  else
+    t = "stop";
+  //Serial.println(t);
+  server.send(200, "text/plain", t);
 }
 
 void handleNotFound(){
@@ -37,24 +45,23 @@ void handleNotFound(){
 const int gerkonPin = 2;
 
 void stateChanged() {
-  count++;
-  Serial.print("G");
-  /*state = !state;
-  digitalWrite(LED_BUILTIN, state);
-  if (state) {
-    Serial.println("1");
+  if(play) {
+    count++;
+    velocity += 1.0f;
+    //Serial.print("G");
   } else {
-    Serial.println("0");
-  }*/
+    //Serial.print("g");  
+  }
 }
 
 void setup(void){
   pinMode(gerkonPin, INPUT);
-  attachInterrupt(/*digitalPinToInterrupt*/(gerkonPin), stateChanged, CHANGE);// RISING
-
+  attachInterrupt(gerkonPin, stateChanged, CHANGE);// RISING
+  //os_timer_setfn(&myTimer, timerCallback, NULL);
+  //os_timer_arm(&myTimer, 100, true);
   
-  pinMode(led, OUTPUT);
-  digitalWrite(led, 0);
+  //pinMode(led, OUTPUT);
+  //digitalWrite(led, 0);
   Serial.begin(115200);
   WiFi.begin(ssid, password);
   Serial.println("");
@@ -76,8 +83,41 @@ void setup(void){
 
   server.on("/", handleRoot);
 
-  server.on("/inline", [](){
-    server.send(200, "text/plain", "this works as well");
+  server.on("/gui", [](){
+    String t;
+    if(play)
+      t = "play," + String(count) + "," + String(velocity) + "," + cashback;
+    else
+      t = "stop";
+    //Serial.println(t);
+    t = "<!DOCTYPE html><html><header><meta http-equiv='refresh' content='1'></header><body><H1>" + t + "</H1>";
+    t += "<form action='/play' method='POST'><input type='text' name='cashback'><input type='submit' value='play'></form>";
+    t += "<form action='/stop' method='POST'><input type='submit' value='stop'></form></body>";
+    server.send(200, "text/html", t);
+  });
+  
+  server.on("/play", [](){
+    if(server.method() == HTTP_POST)
+    {
+      play = true;
+      //velocity = 0.0;
+      count = 0;
+      for (uint8_t i = 0; i < server.args(); i++) if(server.argName(i) == "cashback") {
+        cashback = server.arg(i);
+      }
+      server.send(200, "text/plain", "OK");
+    }
+  });
+  
+  server.on("/stop", [](){
+    if(server.method() == HTTP_POST)
+    {
+      play = false;
+      //velocity = 0.0;
+      count = 0;
+      cashback = "0";
+      server.send(200, "text/plain", "OK");
+    }
   });
 
   server.onNotFound(handleNotFound);
@@ -86,7 +126,15 @@ void setup(void){
   Serial.println("HTTP server started"); 
 }
 
+unsigned long previousMillis = 0;
+const long interval = 50;
+
 void loop(void){
+  unsigned long currentMillis = millis();
+  if(currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;   
+    velocity *= 0.9;
+  }
   server.handleClient();
 }
 
