@@ -12,13 +12,13 @@ const int led = 13;
 int count = 0;
 float velocity = 0;
 bool play = false;
-String cashback = "";
+String cashback = "", mode_ = "";
 
 
 void handleRoot() {
   String t;
   if(play)
-    t = "play," + String(count) + "," + String(velocity) + "," + cashback;
+    t = "play," + String(count) + "," + String(velocity) + "," + cashback + "," + mode_;
   else
     t = "stop";
   //Serial.println(t);
@@ -49,8 +49,6 @@ void stateChanged() {
     count++;
     velocity += 1.0f;
     //Serial.print("G");
-  } else {
-    //Serial.print("g");  
   }
 }
 
@@ -86,7 +84,7 @@ void setup(void){
   server.on("/gui", [](){
     String t;
     if(play)
-      t = "play," + String(count) + "," + String(velocity) + "," + cashback;
+      t = "play," + String(count) + "," + String(velocity) + "," + cashback + "," + mode_;
     else
       t = "stop";
     //Serial.println(t);
@@ -102,9 +100,10 @@ void setup(void){
       play = true;
       //velocity = 0.0;
       count = 0;
-      for (uint8_t i = 0; i < server.args(); i++) if(server.argName(i) == "cashback") {
-        cashback = server.arg(i);
-      }
+      for (uint8_t i = 0; i < server.args(); i++)
+        if(server.argName(i) == "cashback") cashback = server.arg(i);
+        else if(server.argName(i) == "mode") mode_ = server.arg(i);
+      
       server.send(200, "text/plain", "OK");
     }
   });
