@@ -1,7 +1,11 @@
-#include <ESP8266WiFi.h>
+ #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+
+extern "C" {
+  #include "user_interface.h"
+}
 
 const char* ssid = "TP-LINK_19EC";
 const char* password = "05027767";
@@ -61,22 +65,37 @@ void setup(void){
   //pinMode(led, OUTPUT);
   //digitalWrite(led, 0);
   Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  Serial.println("");
+  wifi_set_phy_mode(PHY_MODE_11B);
 
-  // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  if(true)
+  {
+    WiFi.mode(WIFI_STA);
+    WiFi.softAPdisconnect(true);
+    WiFi.begin(ssid, password);
+    Serial.println("");
+  
+    // Wait for connection
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    Serial.println("");
+    Serial.print("Connected to ");
+    Serial.println(ssid);
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+
+    if (MDNS.begin("esp8266")) {
+      Serial.println("MDNS responder started");
+    }
   }
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(ssid);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-  if (MDNS.begin("esp8266")) {
-    Serial.println("MDNS responder started");
+  else
+  {
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP("espbi", "12345678bibi");
+    IPAddress myIP = WiFi.softAPIP();
+    Serial.print("AP IP: ");
+    Serial.println(myIP);
   }
 
   server.on("/", handleRoot);
