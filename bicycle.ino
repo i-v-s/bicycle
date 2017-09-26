@@ -15,14 +15,14 @@ ESP8266WebServer server(80);
 const int led = 13;
 int count = 0;
 float velocity = 0;
-bool play = false;
-String cashback = "", mode_ = "";
+bool play = true;
+String data = "";
 
 
 void handleRoot() {
   String t;
   if(play)
-    t = "play," + String(count) + "," + String(velocity) + "," + cashback + "," + mode_;
+    t = "play," + String(count) + "," + String(velocity) + "," + data;
   else
     t = "stop";
   //Serial.println(t);
@@ -103,37 +103,57 @@ void setup(void){
   server.on("/gui", [](){
     String t;
     if(play)
-      t = "play," + String(count) + "," + String(velocity) + "," + cashback + "," + mode_;
+      t = "play," + String(count) + "," + String(velocity) + "," + data;
     else
       t = "stop";
     //Serial.println(t);
     t = "<!DOCTYPE html><html><header><meta http-equiv='refresh' content='1'></header><body><H1>" + t + "</H1>";
-    t += "<form action='/play' method='POST'><input type='text' name='cashback'><input type='submit' value='play'></form>";
+    t += "<form action='/play' method='POST'><input type='text' name='data'><input type='submit' value='play'></form>";
     t += "<form action='/stop' method='POST'><input type='submit' value='stop'></form></body>";
     server.send(200, "text/html", t);
   });
-  
-  server.on("/play", [](){
-    if(server.method() == HTTP_POST)
+
+  server.on("/data", [](){
+    //if(server.method() == HTTP_POST)
     {
       play = true;
       //velocity = 0.0;
       count = 0;
       for (uint8_t i = 0; i < server.args(); i++)
-        if(server.argName(i) == "cashback") cashback = server.arg(i);
-        else if(server.argName(i) == "mode") mode_ = server.arg(i);
-      
+        if(server.argName(i) == "data") data = server.arg(i);      
+      server.send(200, "text/plain", (play ? "play," : "stop,") + String(count) + "," + String(velocity) + "," + data);
+    }    
+  });
+  server.on("/play", [](){
+    //if(server.method() == HTTP_POST)
+    {
+      play = true;
+      //velocity = 0.0;
+      count = 0;
+      for (uint8_t i = 0; i < server.args(); i++)
+        if(server.argName(i) == "data") data = server.arg(i);      
       server.send(200, "text/plain", "OK");
     }
   });
   
   server.on("/stop", [](){
-    if(server.method() == HTTP_POST)
+    //if(server.method() == HTTP_POST)
     {
       play = false;
-      //velocity = 0.0;
+      velocity = 0.0;
       count = 0;
-      cashback = "0";
+      data = "0";
+      server.send(200, "text/plain", "OK");
+    }
+  });
+
+  server.on("/reset", [](){
+    //if(server.method() == HTTP_POST)
+    {
+      play = true;
+      velocity = 0.0;
+      count = 0;
+      data = "0";
       server.send(200, "text/plain", "OK");
     }
   });
@@ -152,6 +172,12 @@ void loop(void){
   if(currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;   
     velocity *= 0.9;
+    int c = Serial.read();
+    if (c == 'r') {
+      count = 0;
+      velocity = 0;
+    }
+    Serial.println((play ? "+play," : "+stop,") + String(count) + "," + String(velocity) + "," + data);
   }
   server.handleClient();
 }
